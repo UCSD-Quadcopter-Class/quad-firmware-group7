@@ -1,17 +1,3 @@
-/*
-  ATmega128RFA1 Dev Board Basic Chat
-  by: Jim Lindblom
-      SparkFun Electronics
-  date: July 3, 2012
-  License: Beerware. Feel free to use, reuse, and modify this code
-  as you please. If you find it useful, you can buy me a beer.
-
-  This code sets up the ATmega128RFA1's wireless transciever in
-  the most basic way possible to serve as a serial gateway.
-  Serial into the ATmega128RFA1's UART0 will go out the RF radio.
-  Data into the RF radio will go out the MCU's UART0.
-*/
-
 #include "radio.h"
 
 int count = 0;
@@ -20,6 +6,9 @@ bool first = true;
 unsigned long start;
 byte data[32];
 int idx = -1;
+
+int value_to_read = -1;
+int values[4] = {0, 0, 0, 0};
 
 void setup()
 {
@@ -33,42 +22,46 @@ void setup()
 
 void loop()
 {
-
-  if (rfAvailable())  // If data receievd on radio...
-  {
+  if (rfAvailable()) {
     byte b = rfRead();
-    if ((char)b == 'x') {
-      // about to receive new data, so reset the buffer
-      idx = 0;
-      if (first) {
-        Serial.println("recieved first x");
+    if ( (char)b == ' ' ) {
+      char str[32];
+      sprintf(str, "t %d, y %d, p %d, r %d\n\0", values[0], values[1], values[2], values[3]);
+      Serial.print(str);
+      memset(values, 0, 16);
+    }
+    
+    if ( value_to_read == -1 ) {
+      if ( (char)b == 't' ) {
+        value_to_read = 0;
+      } else if ( (char)b == 'y' ) {
+        value_to_read = 1;
+      } else if ( (char)b == 'p' ) {
+        value_to_read = 2;
+      } else if ( (char)b == 'r' ) {
+        value_to_read = 3;
+      } else {
+        value_to_read = -1;
       }
-
-      Serial.println("resetting buffer");
-
+    } else {
+      if ( b >='0' && b <= '9' ) {
+        values[value_to_read] *= 10;
+        values[value_to_read] += (b-'0');
+      } else {
+        if ( (char)b == 't' ) {
+        value_to_read = 0;
+      } else if ( (char)b == 'y' ) {
+        analogWrite(8, values[0]);
+        value_to_read = 1;
+      } else if ( (char)b == 'p' ) {
+        value_to_read = 2;
+      } else if ( (char)b == 'r' ) {
+        value_to_read = 3;
+      } else {
+        value_to_read = -1;
+      }
+      }
     }
-    else if(idx >= 0){
-      data[idx] = b;
-      
-      if (idx == 3) {
-      // we filled buffer with bytes
-      int *intArray = (int)data;
-     
-      Serial.println("Printing data");
-      Serial.print(intArray[0]);
-      Serial.println("");
-    }
-    if(idx == 3){
-      idx = 0;
-    }
-    else {
-      idx++;
-    }
-//      Serial.print(idx);
-//      Serial.println("");
-    }
-    
-
-    
   }
+  
 }

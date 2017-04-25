@@ -169,11 +169,9 @@ void loop() {
   }
 
   /* RADIO */
-  char str[32];
-  sprintf(str,"%d%d%d%d%d%d%d%d",numsScaled[0],numsScaled[1],numsScaled[2],numsScaled[3],numsScaled[4],numsScaled[5],numsScaled[6],numsScaled[7]);
-  Serial.print("size of str: ");
-  Serial.println(sizeof(str));
-  rfWrite('x');
+  char str[64];
+  sprintf(str,"t%dy%dp%dr%d %d%d%d%d\0",numsScaled[0],numsScaled[1],numsScaled[2],numsScaled[3],numsScaled[4],numsScaled[5],numsScaled[6],numsScaled[7]);
+  Serial.println(str);
   rfPrint(str);
   
   Serial.println("\n");
