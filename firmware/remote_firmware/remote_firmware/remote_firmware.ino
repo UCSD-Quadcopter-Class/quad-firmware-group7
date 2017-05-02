@@ -1,6 +1,3 @@
-#include <radio.h>
-
-
 /* test_remote.ino
  * Sketch for testing all parts of QuadRemote.
  * Components tested:
@@ -14,21 +11,10 @@
 
 #include "quad_remote.h"      // Header file with pin definitions and setup
 #include <serLCD.h>
+#include <signals.h>
+#include <radio.h>
 
-
-  // Initialize global variables for storing incoming data from input pins
-  int readYaw = 0;
-  int readThrottle = 0;
-  int readRoll = 0;
-  int readPitch = 0; 
-  int readPot1 = 0;
-  int readPot2 = 0;
-  int button1Value = 0;     // buttons are active high
-  int button2Value = 0; 
-  bool button1Press = 0;
-  bool button2Press = 0;
-  bool LEDVal = 0;
-
+int LEDVal;
 uint8_t scale[8] = 
                  {B00000000,
                   B00000000,
@@ -127,28 +113,12 @@ void loop() {
   /* BUTTON TEST: Print to serial when button press registered */
 
   // Read incoming presses from buttons: WHY AREN'T INTERRUPTS WORKING
-  button1Value = digitalRead(PIN_BTN1); 
-  button2Value = digitalRead(PIN_BTN2); 
-    
-  // Print to serial if press registered
-  if (button1Value == 0)
-  {
-    numbers[6] = 1024;
-  } else {
-    numbers[6] = 0;
-  }
-
-  if (button2Value == 0)
-  {
-    numbers[7] = 1024;
-  } else {
-    numbers[7] = 0;
-  }
+  
 
   /* LED TEST: Turn LEDs on and off as program cycles (start LOW) */
 
   if (last + 1000 <= millis()) {
-    LEDVal = 1;//!LEDVal;
+    LEDVal = 1; //!LEDVal;
     digitalWrite(PIN_LED_BLUE, LEDVal);
     digitalWrite(PIN_LED_GRN, LEDVal);
     digitalWrite(PIN_LED_RED, LEDVal);
@@ -168,11 +138,43 @@ void loop() {
     Serial.print(" ");
   }
 
+  int button1Value = digitalRead(PIN_BTN1); 
+  int button2Value = digitalRead(PIN_BTN2); 
+    
+  // Print to serial if press registered
+  if (button1Value == 0)
+  {
+    numsScaled[6] = 1024;
+  } else {
+    numsScaled[6] = 0;
+  }
+
+  if (button2Value == 0)
+  {
+    numsScaled[7] = 1024;
+  } else {
+    numsScaled[7] = 0;
+  }
+
   /* RADIO */
+  struct signals remote_values;
+  remote_values.magic = MAGIC_NUMBER;
+  remote_values.throttle = numsScaled[0];
+  remote_values.yaw = numsScaled[1];
+  remote_values.pitch = numsScaled[2];
+  remote_values.roll = numsScaled[3];
+  remote_values.pot1 = numsScaled[4];
+  remote_values.pot2 = numsScaled[5];
+  if ( numsScaled[6] > 0 ) {
+    remote_values.button_flags |= BUTTON1_MASK;
+  }
+  if ( numsScaled[7] > 0 ) {
+    remote_values.button_flags |= BUTTON2_MASK;
+  }
   char str[64];
   sprintf(str,"t%dy%dp%dr%d %d%d%d%d\0",numsScaled[0],numsScaled[1],numsScaled[2],numsScaled[3],numsScaled[4],numsScaled[5],numsScaled[6],numsScaled[7]);
   Serial.println(str);
-  rfPrint(str);
+  rfWrite((uint8_t*) (&signals_t), sizeof(signals_t));
   
   Serial.println("\n");
  
