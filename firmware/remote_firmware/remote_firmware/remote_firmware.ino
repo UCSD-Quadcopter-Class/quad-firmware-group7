@@ -174,7 +174,7 @@ void loop() {
   char str[64];
   sprintf(str,"t%dy%dp%dr%d %d%d%d%d\0",numsScaled[0],numsScaled[1],numsScaled[2],numsScaled[3],numsScaled[4],numsScaled[5],numsScaled[6],numsScaled[7]);
   Serial.println(str);
-  rfWrite((uint8_t*) (&signals_t), sizeof(signals_t));
+  rfWrite((uint8_t*) (&remote_values), sizeof(struct signals));
   
   Serial.println("\n");
  
