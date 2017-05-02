@@ -1,3 +1,5 @@
+#include <signals.h>
+
 #include "radio.h"
 
 // For the IMU
@@ -42,7 +44,7 @@ void setupSensor()
   //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_16G);
   
   // 2.) Set the magnetometer sensitivity
-  lsm.setupMag(lsm.LSM9DS1_MAGGAIN_4GAUSS);
+  //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_4GAUSS);
   //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_8GAUSS);
   //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_12GAUSS);
   //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_16GAUSS);
@@ -123,6 +125,11 @@ void setup()
 void loop()
 {
   test_eulerAngles();
+  if ( rfAvailable() ) {
+    struct signals remote_values;
+    rfRead( (uint8_t*) (&remote_values), sizeof(struct signals));
+    throttle(remote_values.throttle);
+  }
 //  if (rfAvailable()) {
 //    byte b = rfRead();
 //    if ( (char)b == ' ' ) {
