@@ -11,7 +11,7 @@
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 
 // Create simple AHRS algorithm using the LSM9DS0 instance's accelerometer and magnetometer.
-Adafruit_Simple_AHRS ahrs(&lsm.getAccel(), &lsm.getMag());
+Adafruit_Simple_AHRS ahrs(&lsm.getAccel(), &lsm.getMag(), &lsm.getGyro() );
 
 int count = 0;
 bool done = false;
@@ -55,35 +55,54 @@ void setupSensor()
   //lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_2000DPS);
 }
 
-void test_imu()
-{
-  lsm.read();  /* ask it to read in the data */ 
-  /* Get a new sensor event */ 
-  sensors_event_t a, m, g, temp;
+//void test_imu()
+//{
+//  lsm.read();  /* ask it to read in the data */ 
+//  /* Get a new sensor event */ 
+//  sensors_event_t a, m, g, temp;
+//
+//  lsm.getEvent(&a, &m, &g, &temp); 
+//
+//  Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
+//  Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");
+//  Serial.print("\tZ: "); Serial.print(a.acceleration.z);     Serial.println(" m/s^2 ");
+//
+//  Serial.print("Mag X: "); Serial.print(m.magnetic.x);   Serial.print(" gauss");
+//  Serial.print("\tY: "); Serial.print(m.magnetic.y);     Serial.print(" gauss");
+//  Serial.print("\tZ: "); Serial.print(m.magnetic.z);     Serial.println(" gauss");
+//
+//  Serial.print("Gyro X: "); Serial.print(g.gyro.x);   Serial.print(" dps");
+//  Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" dps");
+//  Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" dps");
+//
+//  Serial.println();
+//  delay(200);
+//}
 
-  lsm.getEvent(&a, &m, &g, &temp); 
+//void test_eulerAngles() {
+//  sensors_vec_t   orientation;
+//
+//  // Use the simple AHRS function to get the current orientation.
+//  if (ahrs.getOrientation(&orientation))
+//  {
+//    /* 'orientation' should have valid .roll and .pitch fields */
+//    Serial.print(F("Orientation: "));
+//    Serial.print(orientation.roll);
+//    Serial.print(F(" "));
+//    Serial.print(orientation.pitch);
+//    Serial.print(F(" "));
+//    Serial.print(orientation.heading);
+//    Serial.println(F(""));
+//  }
+//  
+//  delay(100);
+//}
 
-  Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
-  Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");
-  Serial.print("\tZ: "); Serial.print(a.acceleration.z);     Serial.println(" m/s^2 ");
-
-  Serial.print("Mag X: "); Serial.print(m.magnetic.x);   Serial.print(" gauss");
-  Serial.print("\tY: "); Serial.print(m.magnetic.y);     Serial.print(" gauss");
-  Serial.print("\tZ: "); Serial.print(m.magnetic.z);     Serial.println(" gauss");
-
-  Serial.print("Gyro X: "); Serial.print(g.gyro.x);   Serial.print(" dps");
-  Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" dps");
-  Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" dps");
-
-  Serial.println();
-  delay(200);
-}
-
-void test_eulerAngles() {
+void test_getQuad() {
   sensors_vec_t   orientation;
 
   // Use the simple AHRS function to get the current orientation.
-  if (ahrs.getOrientation(&orientation))
+  if (ahrs.getQuad(&orientation))
   {
     /* 'orientation' should have valid .roll and .pitch fields */
     Serial.print(F("Orientation: "));
@@ -91,7 +110,7 @@ void test_eulerAngles() {
     Serial.print(F(" "));
     Serial.print(orientation.pitch);
     Serial.print(F(" "));
-    Serial.print(orientation.heading);
+    Serial.print(orientation.gyro_z);
     Serial.println(F(""));
   }
   
@@ -124,59 +143,21 @@ void setup()
 
 void loop()
 {
-  test_eulerAngles();
-  if ( rfAvailable() ) {
-    struct signals remote_values;
-    rfRead( (uint8_t*) (&remote_values), sizeof(struct signals));
-    if ( remote_values.magic != MAGIC_NUMBER ) {
-      return;
-    }
-    
-    throttle(remote_values.throttle);
-    char str[64];
-    sprintf(str,"t%dy%dp%dr%d %d%d%d%d\0\n",remote_values.throttle,remote_values.yaw,remote_values.pitch,remote_values.roll,remote_values.pot1,remote_values.pot2);
-    Serial.print(str);
-  }
-//  if (rfAvailable()) {
-//    byte b = rfRead();
-//    if ( (char)b == ' ' ) {
-//      char str[32];
-//      sprintf(str, "t %d, y %d, p %d, r %d\n\0", values[0], values[1], values[2], values[3]);
-//      Serial.print(str);
-//      memset(values, 0, 16);
+//  test_eulerAngles();
+
+  test_getQuad();
+  
+//  if ( rfAvailable() ) {
+//    struct signals remote_values;
+//    rfRead( (uint8_t*) (&remote_values), sizeof(struct signals));
+//    if ( remote_values.magic != MAGIC_NUMBER ) {
+//      return;
 //    }
 //    
-//    if ( value_to_read == -1 ) {
-//      if ( (char)b == 't' ) {
-//        value_to_read = 0;
-//      } else if ( (char)b == 'y' ) {
-//        value_to_read = 1;
-//      } else if ( (char)b == 'p' ) {
-//        value_to_read = 2;
-//      } else if ( (char)b == 'r' ) {
-//        value_to_read = 3;
-//      } else {
-//        value_to_read = -1;
-//      }
-//    } else {
-//      if ( b >='0' && b <= '9' ) {
-//        values[value_to_read] *= 10;
-//        values[value_to_read] += (b-'0');
-//      } else {
-//        if ( (char)b == 't' ) {
-//        value_to_read = 0;
-//      } else if ( (char)b == 'y' ) {
-//        throttle(values[0]);
-//        value_to_read = 1;
-//      } else if ( (char)b == 'p' ) {
-//        value_to_read = 2;
-//      } else if ( (char)b == 'r' ) {
-//        value_to_read = 3;
-//      } else {
-//        value_to_read = -1;
-//      }
-//      }
-//    }
+//    throttle(remote_values.throttle);
+//    char str[64];
+//    sprintf(str,"t%dy%dp%dr%d %d%d%d%d\0\n",remote_values.throttle,remote_values.yaw,remote_values.pitch,remote_values.roll,remote_values.pot1,remote_values.pot2);
+//    Serial.print(str);
 //  }
 
 }
