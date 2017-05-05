@@ -20,20 +20,24 @@ unsigned long start;
 byte data[32];
 int idx = -1;
 
-const int FR_PROP = 5;
-const int FL_PROP = 3;
-const int BR_PROP = 4;
-const int BL_PROP = 8;
+const int FR_PIN = 5;
+const int FL_PIN = 3;
+const int BR_PIN = 4;
+const int BL_PIN = 8;
+const int FL = 1;
+const int FR = 2;
+const int BL = 3;
+const int BR = 4;
 
 int value_to_read = -1;
 int values[4] = {0, 0, 0, 0};
 bool armable = false;
 
 void throttle(int speed) {
-  analogWrite(FR_PROP, speed);
-  analogWrite(FL_PROP, speed);
-  analogWrite(BR_PROP, speed);
-  analogWrite(BL_PROP, speed);
+  analogWrite(FR_PIN, speed);
+  analogWrite(FL_PIN, speed);
+  analogWrite(BR_PIN, speed);
+  analogWrite(BL_PIN, speed);
 }
 
 void setupSensor()
@@ -43,12 +47,6 @@ void setupSensor()
   //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_4G);
   //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_8G);
   //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_16G);
-  
-  // 2.) Set the magnetometer sensitivity
-  //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_4GAUSS);
-  //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_8GAUSS);
-  //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_12GAUSS);
-  //lsm.setupMag(lsm.LSM9DS1_MAGGAIN_16GAUSS);
 
   // 3.) Setup the gyroscope
   lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_245DPS);
@@ -80,25 +78,6 @@ void setupSensor()
 //  delay(200);
 //}
 
-//void test_eulerAngles() {
-//  sensors_vec_t   orientation;
-//
-//  // Use the simple AHRS function to get the current orientation.
-//  if (ahrs.getOrientation(&orientation))
-//  {
-//    /* 'orientation' should have valid .roll and .pitch fields */
-//    Serial.print(F("Orientation: "));
-//    Serial.print(orientation.roll);
-//    Serial.print(F(" "));
-//    Serial.print(orientation.pitch);
-//    Serial.print(F(" "));
-//    Serial.print(orientation.heading);
-//    Serial.println(F(""));
-//  }
-//  
-//  delay(100);
-//}
-
 void test_getQuad() {
   sensors_vec_t   orientation;
 
@@ -106,13 +85,13 @@ void test_getQuad() {
   if (ahrs.getQuad(&orientation))
   {
     /* 'orientation' should have valid .roll and .pitch fields */
-    Serial.print(F("Orientation: "));
-    Serial.print(orientation.roll);
-    Serial.print(F(" "));
+//    Serial.print(F("Orientation: "));
+//    Serial.print(orientation.roll);
+//    Serial.print(F(" "));
     Serial.print(orientation.pitch);
-    Serial.print(F(" "));
-    Serial.print(orientation.gyro_z);
-    Serial.println(F(""));
+    Serial.println(F(" "));
+//    Serial.print(orientation.gyro_z);
+//    Serial.println(F(""));
   }
   
   delay(100);
