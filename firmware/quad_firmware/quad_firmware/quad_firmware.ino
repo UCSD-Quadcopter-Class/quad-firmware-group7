@@ -27,6 +27,7 @@ const int BL_PROP = 8;
 
 int value_to_read = -1;
 int values[4] = {0, 0, 0, 0};
+bool armable = false;
 
 void throttle(int speed) {
   analogWrite(FR_PROP, speed);
@@ -147,17 +148,21 @@ void loop()
 
   test_getQuad();
   
-//  if ( rfAvailable() ) {
-//    struct signals remote_values;
-//    rfRead( (uint8_t*) (&remote_values), sizeof(struct signals));
-//    if ( remote_values.magic != MAGIC_NUMBER ) {
-//      return;
-//    }
-//    
-//    throttle(remote_values.throttle);
-//    char str[64];
-//    sprintf(str,"t%dy%dp%dr%d %d%d%d%d\0\n",remote_values.throttle,remote_values.yaw,remote_values.pitch,remote_values.roll,remote_values.pot1,remote_values.pot2);
-//    Serial.print(str);
-//  }
+  if ( rfAvailable() ) {
+    struct signals remote_values;
+    rfRead( (uint8_t*) (&remote_values), sizeof(struct signals));
+    if ( remote_values.magic != MAGIC_NUMBER ) {
+      return;
+    }
+    
+    if ( remote_values.button_flags & BUTTON1_MASK > 0 && armable) {
+      throttle(remote_values.throttle);
+    }
+    
+    char str[64];
+    sprintf(str,"t%d\n",remote_values.button_flags);
+    Serial.print(str);
+  }
 
 }
+

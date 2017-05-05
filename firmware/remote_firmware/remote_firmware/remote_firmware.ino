@@ -145,6 +145,7 @@ void loop() {
   if (button1Value == 0)
   {
     numsScaled[6] = 1024;
+    digitalWrite(PIN_LED_BLUE, 0);
   } else {
     numsScaled[6] = 0;
   }
@@ -171,13 +172,7 @@ void loop() {
   if ( numsScaled[7] > 0 ) {
     remote_values.button_flags |= BUTTON2_MASK;
   }
-  char str[64];
-  sprintf(str,"t%dy%dp%dr%d %d%d%d%d\0",numsScaled[0],numsScaled[1],numsScaled[2],numsScaled[3],numsScaled[4],numsScaled[5],numsScaled[6],numsScaled[7]);
-  Serial.println(str);
   rfWrite((uint8_t*) (&remote_values), sizeof(struct signals));
-  
-  Serial.println("\n");
- 
   delay(200);
 
 }
