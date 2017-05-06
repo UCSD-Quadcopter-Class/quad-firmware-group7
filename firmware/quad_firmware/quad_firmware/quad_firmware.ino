@@ -42,6 +42,20 @@ void throttle(int speed) {
   analogWrite(BL_PIN, speed);
 }
 
+struct quad_values {
+  float pitch;
+  float roll;
+  float gyro;
+};
+
+struct quad_values calibrated;
+
+void adjust_imu(sensors_vec_t * vals) {
+  vals->pitch -= calibrated.pitch;
+  vals->roll -= calibrated.roll;
+  vals->gyro_z -= calibrated.gyro;
+}
+
 void setupSensor()
 {
   // 1.) Set the accelerometer range
@@ -62,6 +76,7 @@ void test_getQuad() {
   // Use the simple AHRS function to get the current orientation.
   if (ahrs.getQuad(&orientation))
   {
+    adjust_imu(&orientation);
     /* 'orientation' should have valid .roll and .pitch fields */
 //    Serial.print(F("Orientation: "));
 //    Serial.print(orientation.roll);
@@ -97,6 +112,25 @@ void setup()
   setupSensor();
     
   Serial.println("Initiliazed");
+}
+
+void calibrate_values() {
+  sensors_vec_t   orientation;
+  
+  if ( armable ) {
+    // already zeroed
+    return;
+  } else {
+    if (ahrs.getQuad(&orientation))
+    {
+      calibrated.pitch = orientation.pitch;
+      calibrated.roll = orientation.roll;
+      calibrated.gyro = orientation.gyro_z;
+
+      armable = true;
+      rfWrite((byte)1);
+    }
+  }
 }
 
 void loop()
