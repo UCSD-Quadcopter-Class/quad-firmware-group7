@@ -135,7 +135,7 @@ void calibrate_values() {
 
 void loop()
 {
-//  test_eulerAngles();
+  calibrate_values();
 
   test_getQuad();
   
