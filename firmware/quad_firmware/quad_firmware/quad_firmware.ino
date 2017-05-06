@@ -24,21 +24,37 @@ const int FR_PIN = 5;
 const int FL_PIN = 3;
 const int BR_PIN = 4;
 const int BL_PIN = 8;
-const int FL = 1;
-const int FR = 2;
-const int BL = 3;
-const int BR = 4;
+
+const int PITCH = 0;
+const int PITCH_GYRO = 1;
+const int ROLL = 2;
+const int YAW = 3;
+
+const int FL = 0;
+const int FR = 1;
+const int BL = 2;
+const int BR = 3;
 
 int value_to_read = -1;
 int values[4] = {0, 0, 0, 0};
 bool armable = false;
 bool armed = false;
 
+//PID VALS
+const float Kp = 1;
+const float Ki = 1;
+const float Kd = 0.5;
+float prev_error = 0;
+float cur_errpr = 0;
+//float errors[3][3];
+float IMUvals[3];
+int p_adj = 0;
+
 void throttle(int speed) {
-  analogWrite(FR_PIN, speed);
-  analogWrite(FL_PIN, speed);
-  analogWrite(BR_PIN, speed);
-  analogWrite(BL_PIN, speed);
+  analogWrite(FR_PIN, speed + p_adj);
+  analogWrite(FL_PIN, speed + p_adj);
+  analogWrite(BR_PIN, speed - p_adj);
+  analogWrite(BL_PIN, speed - p_adj);
 }
 
 struct quad_values {
@@ -69,48 +85,28 @@ void setupSensor()
   //lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_2000DPS);
 }
 
-//void test_imu()
-//{
-//  lsm.read();  /* ask it to read in the data */ 
-//  /* Get a new sensor event */ 
-//  sensors_event_t a, m, g, temp;
-//
-//  lsm.getEvent(&a, &m, &g, &temp); 
-//
-//  Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
-//  Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");
-//  Serial.print("\tZ: "); Serial.print(a.acceleration.z);     Serial.println(" m/s^2 ");
-//
-//  Serial.print("Mag X: "); Serial.print(m.magnetic.x);   Serial.print(" gauss");
-//  Serial.print("\tY: "); Serial.print(m.magnetic.y);     Serial.print(" gauss");
-//  Serial.print("\tZ: "); Serial.print(m.magnetic.z);     Serial.println(" gauss");
-//
-//  Serial.print("Gyro X: "); Serial.print(g.gyro.x);   Serial.print(" dps");
-//  Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" dps");
-//  Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" dps");
-//
-//  Serial.println();
-//  delay(200);
-//}
-
-void test_getQuad() {
+void readIMU() {
   sensors_vec_t   orientation;
 
-  // Use the simple AHRS function to get the current orientation.
   if (ahrs.getQuad(&orientation))
   {
     adjust_imu(&orientation);
-    /* 'orientation' should have valid .roll and .pitch fields */
-//    Serial.print(F("Orientation: "));
-//    Serial.print(orientation.roll);
-//    Serial.print(F(" "));
-    Serial.print(orientation.pitch);
-    Serial.println(F(" "));
-//    Serial.print(orientation.gyro_z);
-//    Serial.println(F(""));
+    
+    IMUvals[PITCH] = orientation.pitch;
+    IMUvals[ROLL] = orientation.roll;
+    IMUvals[PITCH_GYRO] = orientation.gyro_z;
   }
+}
+
+void PID(struct signals* rvals) {
+  prev_error = cur_error;
+  cur_error = rvals->pitch - IMUvals[PITCH];
+  float time_ms = 100.0;
+  float P = cur_error;
+  float I = cur_error * time_ms/1000;
+  float D = (prev_error - cur_error) / (time_ms/1000);
   
-  delay(10);
+  p_adj = Kp*P + Ki*I + Kd*D;
 }
  
 void setup()
@@ -174,13 +170,11 @@ void calibrate_values() {
 void loop()
 {
   calibrate_values();
-
-  test_getQuad();
-  calibrate_values();
-  
+  readIMU();
   if ( rfAvailable() ) {
     struct signals remote_values;
     rfRead( (uint8_t*) (&remote_values), sizeof(struct signals));
+    PID(&remote_values);
     if ( remote_values.magic != MAGIC_NUMBER ) {
       return;
     }
@@ -192,10 +186,6 @@ void loop()
     if ( armed ) {
       throttle(remote_values.throttle);
     }
-    
-    char str[64];
-    sprintf(str,"t%d\n",remote_values.button_flags);
-    Serial.print(str);
   }
 
 }
