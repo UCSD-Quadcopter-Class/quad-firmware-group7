@@ -72,7 +72,7 @@ void test_getQuad() {
     Serial.println(F(""));
   }
   
-  delay(100);
+  delay(10);
 }
  
 void setup()

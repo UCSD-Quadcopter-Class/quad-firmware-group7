@@ -134,7 +134,7 @@ bool Adafruit_LSM9DS1::begin()
 
   // Enable the accelerometer continous
   write8(XGTYPE, LSM9DS1_REGISTER_CTRL_REG5_XL, 0x38); // enable X Y and Z axis
-  write8(XGTYPE, LSM9DS1_REGISTER_CTRL_REG6_XL, 0x80/*0xC0*/); // 1 KHz out data rate, BW set by ODR, 408Hz anti-aliasing
+  write8(XGTYPE, LSM9DS1_REGISTER_CTRL_REG6_XL, 0xC0/*0xC0*/); // 1 KHz out data rate, BW set by ODR, 408Hz anti-aliasing
   write8(XGTYPE, LSM9DS1_REGISTER_CTRL_REG7_XL, 0xE0); // low pass?
 
 
