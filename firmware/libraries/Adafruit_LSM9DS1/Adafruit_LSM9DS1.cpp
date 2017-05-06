@@ -139,7 +139,7 @@ bool Adafruit_LSM9DS1::begin()
 
 
 // 0xA0 / 0xA0 -> pretty good at quarter power
-
+// 0x80 / 0xE0 -> better
 
 
   // enable mag continuous
