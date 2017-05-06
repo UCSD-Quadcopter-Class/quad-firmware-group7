@@ -30,6 +30,7 @@ int numsScaled[8] = {0,1,2,3,4,5,6,7};
 char *labels[8] = {"T ", "Y ", "P ", "R ", "P1", "P2", "B1", "B2"};
 char pins[8] = {PIN_THROTTLE, PIN_YAW, PIN_PITCH, PIN_ROLL, PIN_POT1, PIN_POT2, PIN_POT1, PIN_POT2};
 
+bool armed = false;
 serLCD lcd;
 
 void update_display() {
@@ -111,8 +112,6 @@ int last = 0;
 void loop() {
 
   /* BUTTON TEST: Print to serial when button press registered */
-
-  // Read incoming presses from buttons: WHY AREN'T INTERRUPTS WORKING
   
 
   /* LED TEST: Turn LEDs on and off as program cycles (start LOW) */
@@ -131,11 +130,9 @@ void loop() {
 
   update_display();
 
-  for(char i= 0; i < 8;i++) {
+  for(char i= 0; i < 4;i++) {
     int n = map(numbers[i], 120, 816, 0, 255);
     numsScaled[i] = n;
-    Serial.print(n);
-    Serial.print(" ");
   }
 
   int button1Value = digitalRead(PIN_BTN1); 
@@ -145,7 +142,6 @@ void loop() {
   if (button1Value == 0)
   {
     numsScaled[6] = 1024;
-    digitalWrite(PIN_LED_BLUE, 0);
   } else {
     numsScaled[6] = 0;
   }

@@ -32,6 +32,7 @@ const int BR = 4;
 int value_to_read = -1;
 int values[4] = {0, 0, 0, 0};
 bool armable = false;
+bool armed = false;
 
 void throttle(int speed) {
   analogWrite(FR_PIN, speed);
@@ -133,8 +134,12 @@ void loop()
     if ( remote_values.magic != MAGIC_NUMBER ) {
       return;
     }
+
+    if ( remote_values.button_flags & BUTTON1_MASK > 0 ) {
+      armed = true;
+    }
     
-    if ( remote_values.button_flags & BUTTON1_MASK > 0 && armable) {
+    if ( armed ) {
       throttle(remote_values.throttle);
     }
     
