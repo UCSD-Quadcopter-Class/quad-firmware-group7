@@ -31,7 +31,6 @@ const int BR = 4;
 
 int value_to_read = -1;
 int values[4] = {0, 0, 0, 0};
-
 bool armable = false;
 bool armed = false;
 
@@ -70,6 +69,30 @@ void setupSensor()
   //lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_2000DPS);
 }
 
+//void test_imu()
+//{
+//  lsm.read();  /* ask it to read in the data */ 
+//  /* Get a new sensor event */ 
+//  sensors_event_t a, m, g, temp;
+//
+//  lsm.getEvent(&a, &m, &g, &temp); 
+//
+//  Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
+//  Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");
+//  Serial.print("\tZ: "); Serial.print(a.acceleration.z);     Serial.println(" m/s^2 ");
+//
+//  Serial.print("Mag X: "); Serial.print(m.magnetic.x);   Serial.print(" gauss");
+//  Serial.print("\tY: "); Serial.print(m.magnetic.y);     Serial.print(" gauss");
+//  Serial.print("\tZ: "); Serial.print(m.magnetic.z);     Serial.println(" gauss");
+//
+//  Serial.print("Gyro X: "); Serial.print(g.gyro.x);   Serial.print(" dps");
+//  Serial.print("\tY: "); Serial.print(g.gyro.y);      Serial.print(" dps");
+//  Serial.print("\tZ: "); Serial.print(g.gyro.z);      Serial.println(" dps");
+//
+//  Serial.println();
+//  delay(200);
+//}
+
 void test_getQuad() {
   sensors_vec_t   orientation;
 
@@ -82,9 +105,9 @@ void test_getQuad() {
 //    Serial.print(orientation.roll);
 //    Serial.print(F(" "));
     Serial.print(orientation.pitch);
-    Serial.print(F(" "));
-    Serial.print(orientation.gyro_z);
-    Serial.println(F(""));
+    Serial.println(F(" "));
+//    Serial.print(orientation.gyro_z);
+//    Serial.println(F(""));
   }
   
   delay(100);
@@ -121,15 +144,30 @@ void calibrate_values() {
     // already zeroed
     return;
   } else {
-    if (ahrs.getQuad(&orientation))
-    {
-      calibrated.pitch = orientation.pitch;
-      calibrated.roll = orientation.roll;
-      calibrated.gyro = orientation.gyro_z;
+      float pitches[10];
+      float rolls[10];
+      float gyros[10];
+      for ( int i = 0; i < 10; i++ ) {
+        if (ahrs.getQuad(&orientation))
+        {
+          pitches[i] = orientation.pitch;
+          rolls[i] = orientation.roll;
+          gyros[i] = orientation.gyro_z;
+        }
+        delay(100);
+      }
+
+      for ( int i = 0; i < 10; i++ ) {
+        calibrated.pitch += pitches[i];
+        calibrated.roll += rolls[i];
+        calibrated.gyro += gyros[i];
+      }
+      
+      calibrated.pitch /= 10;
+      calibrated.roll /= 10;
+      calibrated.gyro /= 10;
 
       armable = true;
-      rfWrite((byte)1);
-    }
   }
 }
 
@@ -138,6 +176,7 @@ void loop()
 //  test_eulerAngles();
 
   test_getQuad();
+  calibrate_values();
   
   if ( rfAvailable() ) {
     struct signals remote_values;
@@ -146,7 +185,7 @@ void loop()
       return;
     }
 
-    if ( remote_values.button_flags & BUTTON1_MASK > 0 ) {
+    if ( remote_values.button_flags & BUTTON1_MASK > 0 && armable) {
       armed = true;
     }
     
@@ -156,7 +195,7 @@ void loop()
     
     char str[64];
     sprintf(str,"t%d\n",remote_values.button_flags);
-//    Serial.print(str);
+    Serial.print(str);
   }
 
 }
