@@ -33,6 +33,14 @@ char pins[8] = {PIN_THROTTLE, PIN_YAW, PIN_PITCH, PIN_ROLL, PIN_POT1, PIN_POT2, 
 bool armed = false;
 serLCD lcd;
 
+int adjust_number(int value, int oldmin, int oldmid, int oldmax, int newmin, int newmid, int newmax) {
+  if ( value < oldmid ) {
+    return map(value, oldmin, oldmid, newmin, newmid);
+  } else {
+    return map(value, oldmid, oldmax, newmid, newmax);
+  }
+}
+
 void update_display() {
   lcd.clear();
   lcd.home();
@@ -129,11 +137,12 @@ void loop() {
   }
 
   update_display();
-
-  for(char i= 0; i < 4;i++) {
-    int n = map(numbers[i], 120, 816, 0, 255);
-    numsScaled[i] = n;
-  }
+  numsScaled[0] = map(numbers[0], 120, 816, 0, 255);
+  numsScaled[1] = map(numbers[1], 151, 816, 0, 255);
+  
+  numsScaled[2] = adjust_number(numbers[2], 114, 467, 816, -45, 0, 45);
+  
+  numsScaled[3] = map(numbers[3], 119, 816, 0, 255);
 
   int button1Value = digitalRead(PIN_BTN1); 
   int button2Value = digitalRead(PIN_BTN2); 

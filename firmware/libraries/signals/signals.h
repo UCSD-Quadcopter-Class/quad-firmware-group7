@@ -12,7 +12,7 @@ const uint8_t BUTTON2_MASK = 0x02;
 
 struct signals {
   uint16_t magic;
-  uint8_t throttle;
+  int8_t throttle;
   uint8_t yaw;
   uint8_t roll;
   uint8_t pitch;
