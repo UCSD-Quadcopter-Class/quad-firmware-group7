@@ -7,6 +7,8 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_Simple_AHRS.h>
 
+const float COMPLIMENTARY_CONST = .65;
+
 // i2c
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 
@@ -41,20 +43,35 @@ bool armable = false;
 bool armed = false;
 
 //PID VALS
-const float Kp = 1;
-const float Ki = 1;
-const float Kd = 0.5;
+const float Kp = .5;
+const float Ki = 0;
+const float Kd = .1;
 float prev_error = 0;
-float cur_errpr = 0;
+float cur_error = 0;
 //float errors[3][3];
 float IMUvals[3];
 int p_adj = 0;
 
 void throttle(int speed) {
-  analogWrite(FR_PIN, speed + p_adj);
-  analogWrite(FL_PIN, speed + p_adj);
-  analogWrite(BR_PIN, speed - p_adj);
-  analogWrite(BL_PIN, speed - p_adj);
+  int fr = speed + p_adj;
+  int fl = speed + p_adj;
+  int br = speed - p_adj + 2;
+  int bl = speed - p_adj - 3;
+
+  if ( fr < 0 ) fr = 0;
+  if ( fl < 0 ) fl = 0;
+  if ( br < 0 ) br = 0;
+  if ( bl < 0 ) bl = 0;
+
+  if ( fr > 255 ) fr = 255;
+  if ( fl > 255 ) fl = 255;
+  if ( br > 255 ) br = 255;
+  if ( bl > 255 ) bl = 255;
+  
+  analogWrite(FR_PIN, fr);
+  analogWrite(FL_PIN, fl);
+  analogWrite(BR_PIN, br);
+  analogWrite(BL_PIN, bl);
 }
 
 struct quad_values {
@@ -97,26 +114,45 @@ void readIMU() {
     IMUvals[PITCH_GYRO] = orientation.gyro_y;
   }
 
-//  Serial.print(IMUvals[PITCH]);
-//  Serial.print(" ");
-  Serial.print(IMUvals[PITCH_GYRO]);
-  Serial.println(" ");
+  //float new_angle = (1-COMPLIMENTARY_CONST) * (IMUvals[PITCH_GYRO]) + (COMPLIMENTARY_CONST)*IMUvals[PITCH];
+  //Serial.print(new_angle);
+  //Serial.print(" ");
+  //Serial.print(IMUvals[PITCH]);
+  //Serial.print(" ");
+  //Serial.print(IMUvals[PITCH_GYRO]);
+  //Serial.println(" ");
+  
 
 }
+
+
 
 float decaying_error = 0;
 
 void PID(struct signals* rvals) {
+  float time_ms = 10.0;
+  
   prev_error = cur_error;
   cur_error = rvals->pitch - IMUvals[PITCH];
   decaying_error /= 2;
   decaying_error += cur_error;
-  float time_ms = 100.0;
+  
   float P = cur_error;
   float I = decaying_error;
-  float D = (prev_error - cur_error) / (time_ms/1000);
+  float D = (prev_error - cur_error);
+
+  
   
   p_adj = Kp*P + Ki*I + Kd*D;
+
+  Serial.print(p_adj);
+  Serial.print(" ");
+  Serial.print(Kp*P);
+  Serial.print(" ");
+  Serial.print(Ki*I);
+  Serial.print(" ");
+  Serial.print(Kd*D);
+  Serial.println(" ");
 }
  
 void setup()
@@ -154,13 +190,13 @@ void calibrate_values() {
       float rolls[10];
       float gyros[10];
       for ( int i = 0; i < 10; i++ ) {
+        delay(100);
         if (ahrs.getQuad(&orientation))
         {
           pitches[i] = orientation.pitch;
           rolls[i] = orientation.roll;
           gyros[i] = orientation.gyro_y;
         }
-        delay(100);
       }
 
       for ( int i = 0; i < 10; i++ ) {
@@ -197,8 +233,6 @@ void loop()
       throttle(remote_values.throttle);
     }
   }
-
-  delay(10);
 
 }
 
