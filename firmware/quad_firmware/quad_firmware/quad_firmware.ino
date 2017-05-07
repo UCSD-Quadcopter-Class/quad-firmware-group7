@@ -75,9 +75,9 @@ void throttle(int speed) {
 }
 
 struct quad_values {
-  float pitch;
-  float roll;
-  float gyro;
+  float pitch = 0.0;
+  float roll = 0.0;
+  float gyro = 0.0;
 };
 
 struct quad_values calibrated;
@@ -114,9 +114,9 @@ void readIMU() {
     IMUvals[PITCH_GYRO] = orientation.gyro_z;
   }
 
-  Serial.print(orientation.pitch);
+  Serial.print(IMUvals[PITCH]);
   Serial.print(" ");
-  Serial.print(orientation.gyro_z);
+  Serial.print(IMUvals[PITCH_GYRO]);
   Serial.println(" ");
 }
 
@@ -179,13 +179,13 @@ void calibrate_values() {
       float rolls[10];
       float gyros[10];
       for ( int i = 0; i < 10; i++ ) {
+        delay(100);
         if (ahrs.getQuad(&orientation))
         {
           pitches[i] = orientation.pitch;
           rolls[i] = orientation.roll;
           gyros[i] = orientation.gyro_z;
         }
-        delay(100);
       }
 
       for ( int i = 0; i < 10; i++ ) {
