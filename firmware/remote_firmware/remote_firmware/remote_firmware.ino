@@ -135,14 +135,11 @@ void loop() {
   for(char i = 0; i < 6; i++) {
     numbers[i] = analogRead(pins[i]); 
   }
-
   update_display();
-  numsScaled[0] = map(numbers[0], 120, 816, 0, 255);
+  numsScaled[0] = map(numbers[0], 136, 816, 0, 255);
   numsScaled[1] = map(numbers[1], 151, 816, 0, 255);
-  
   numsScaled[2] = adjust_number(numbers[2], 114, 467, 816, -45, 0, 45);
-  
-  numsScaled[3] = map(numbers[3], 119, 816, 0, 255);
+  numsScaled[3] = adjust_number(numbers[2], 119, 479, 816, -45, 0, 45);
 
   int button1Value = digitalRead(PIN_BTN1); 
   int button2Value = digitalRead(PIN_BTN2); 
@@ -177,6 +174,7 @@ void loop() {
   if ( numsScaled[7] > 0 ) {
     remote_values.button_flags |= BUTTON2_MASK;
   }
+  Serial.println(remote_values.throttle);
   rfWrite((uint8_t*) (&remote_values), sizeof(struct signals));
   delay(200);
 
