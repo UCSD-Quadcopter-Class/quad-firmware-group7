@@ -136,10 +136,10 @@ void loop() {
     numbers[i] = analogRead(pins[i]); 
   }
   update_display();
-  numsScaled[0] = map(numbers[0], 136, 816, 0, 255);
-  numsScaled[1] = map(numbers[1], 151, 816, 0, 255);
-  numsScaled[2] = adjust_number(numbers[2], 114, 467, 816, -45, 0, 45);
-  numsScaled[3] = adjust_number(numbers[2], 119, 479, 816, -45, 0, 45);
+  numsScaled[0] = map(numbers[0], 136, 820, 0, 255);
+  numsScaled[1] = map(numbers[1], 151, 820, 0, 255);
+  numsScaled[2] = adjust_number(numbers[2], 110, 467, 820, -45, 0, 45);
+  numsScaled[3] = adjust_number(numbers[2], 110, 479, 820, -45, 0, 45);
 
   int button1Value = digitalRead(PIN_BTN1); 
   int button2Value = digitalRead(PIN_BTN2); 
