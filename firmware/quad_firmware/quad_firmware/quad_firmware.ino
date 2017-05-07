@@ -85,7 +85,7 @@ struct quad_values calibrated;
 void adjust_imu(sensors_vec_t * vals) {
   vals->pitch -= calibrated.pitch;
   vals->roll -= calibrated.roll;
-  vals->gyro_z -= calibrated.gyro;
+  vals->gyro_y -= calibrated.gyro;
 }
 
 void setupSensor()
@@ -111,11 +111,11 @@ void readIMU() {
     
     IMUvals[PITCH] = orientation.pitch;
     IMUvals[ROLL] = orientation.roll;
-    IMUvals[PITCH_GYRO] = orientation.gyro_z;
+    IMUvals[PITCH_GYRO] = orientation.gyro_y;
   }
 
-  Serial.print(IMUvals[PITCH]);
-  Serial.print(" ");
+//  Serial.print(IMUvals[PITCH]);
+//  Serial.print(" ");
   Serial.print(IMUvals[PITCH_GYRO]);
   Serial.println(" ");
 }
@@ -184,7 +184,7 @@ void calibrate_values() {
         {
           pitches[i] = orientation.pitch;
           rolls[i] = orientation.roll;
-          gyros[i] = orientation.gyro_z;
+          gyros[i] = orientation.gyro_y;
         }
       }
 
@@ -222,6 +222,6 @@ void loop()
       throttle(remote_values.throttle);
     }
   }
-//  delay(1);
+  delay(10);
 }
 
