@@ -41,20 +41,27 @@ bool armable = false;
 bool armed = false;
 
 //PID VALS
-const float Kp = 1;
-const float Ki = 1;
-const float Kd = 0.5;
+const float Kp = 1.0;
+const float Ki = 0.0;
+const float Kd = 0.0;
+
 float prev_error = 0;
-float cur_errpr = 0;
+float cur_error = 0;
 //float errors[3][3];
 float IMUvals[3];
 int p_adj = 0;
 
 void throttle(int speed) {
-  analogWrite(FR_PIN, speed + p_adj);
-  analogWrite(FL_PIN, speed + p_adj);
-  analogWrite(BR_PIN, speed - p_adj);
-  analogWrite(BL_PIN, speed - p_adj);
+  analogWrite(FR_PIN, speed - p_adj);
+  
+  Serial.print(speed);
+  Serial.print(" + ");
+  Serial.print(p_adj);
+  Serial.println("");
+  
+  analogWrite(FL_PIN, speed - p_adj);
+  analogWrite(BR_PIN, speed + p_adj);
+  analogWrite(BL_PIN, speed + p_adj);
 }
 
 struct quad_values {
@@ -107,6 +114,8 @@ void PID(struct signals* rvals) {
   float D = (prev_error - cur_error) / (time_ms/1000);
   
   p_adj = Kp*P + Ki*I + Kd*D;
+//  Serial.print(p_adj);
+//  Serial.println("");
 }
  
 void setup()
