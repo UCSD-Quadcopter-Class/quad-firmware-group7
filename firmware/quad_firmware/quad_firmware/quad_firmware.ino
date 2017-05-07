@@ -43,9 +43,9 @@ bool armable = false;
 bool armed = false;
 
 //PID VALS
-const float Kp = .5;
+const float Kp = .8;
 const float Ki = 0;
-const float Kd = .1;
+const float Kd = 1.5;
 float prev_error = 0;
 float cur_error = 0;
 //float errors[3][3];
@@ -56,7 +56,7 @@ void throttle(int speed) {
   int fr = speed + p_adj;
   int fl = speed + p_adj;
   int br = speed - p_adj + 2;
-  int bl = speed - p_adj - 3;
+  int bl = speed - p_adj - 5;
 
   if ( fr < 0 ) fr = 0;
   if ( fl < 0 ) fl = 0;
@@ -139,7 +139,7 @@ void PID(struct signals* rvals) {
   
   float P = cur_error;
   float I = decaying_error;
-  float D = (prev_error - cur_error);
+  float D = (cur_error - prev_error);
 
   
   
