@@ -41,7 +41,7 @@ bool armable = false;
 bool armed = false;
 
 //PID VALS
-const float Kp = 1.0;
+const float Kp = 0.35;
 const float Ki = 0.0;
 const float Kd = 0.0;
 
@@ -52,16 +52,26 @@ float IMUvals[3];
 int p_adj = 0;
 
 void throttle(int speed) {
-  analogWrite(FR_PIN, speed - p_adj);
+  int fr = speed + p_adj;
+  int fl = speed + p_adj;
+  int br = speed - p_adj;
+  int bl = speed - p_adj;
+
+  if(fr < 0) fr = 0;
+  if(fl < 0) fl = 0;
+  if(br < 0) br = 0;
+  if(bl < 0) bl = 0;
   
-  Serial.print(speed);
-  Serial.print(" + ");
-  Serial.print(p_adj);
-  Serial.println("");
-  
-  analogWrite(FL_PIN, speed - p_adj);
-  analogWrite(BR_PIN, speed + p_adj);
-  analogWrite(BL_PIN, speed + p_adj);
+  analogWrite(FR_PIN, fr);
+  analogWrite(FL_PIN, fl);
+  analogWrite(BR_PIN, br);
+  analogWrite(BL_PIN, bl);
+
+//  Serial.print("FR: ");
+//  Serial.print(fr);
+//  Serial.print("   BR: ");
+//  Serial.print(br);
+//  Serial.println("");
 }
 
 struct quad_values {
@@ -103,17 +113,33 @@ void readIMU() {
     IMUvals[ROLL] = orientation.roll;
     IMUvals[PITCH_GYRO] = orientation.gyro_z;
   }
+
+  Serial.print(orientation.pitch);
+  Serial.print(" ");
+  Serial.print(orientation.gyro_z);
+  Serial.println(" ");
 }
 
 void PID(struct signals* rvals) {
   prev_error = cur_error;
   cur_error = rvals->pitch - IMUvals[PITCH];
   float time_ms = 100.0;
+  
   float P = cur_error;
   float I = cur_error * time_ms/1000;
   float D = (prev_error - cur_error) / (time_ms/1000);
+
+//  Serial.print("P: ");
+//  Serial.print(Kp*P);
+//  Serial.print("  I: ");
+//  Serial.print(Ki*I);
+//  Serial.print("  D: ");
+//  Serial.print(Kd*D);
+//  Serial.println("");
   
-  p_adj = Kp*P + Ki*I + Kd*D;
+  float val = Kp*P + Ki*I + Kd*D;
+  p_adj = (int)val;
+  
 //  Serial.print(p_adj);
 //  Serial.println("");
 }
@@ -196,6 +222,6 @@ void loop()
       throttle(remote_values.throttle);
     }
   }
-
+//  delay(1);
 }
 
