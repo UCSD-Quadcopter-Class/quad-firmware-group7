@@ -44,7 +44,7 @@ bool armed = false;
 
 //PID VALS
 float Kp = 0;
-float Ki = 0.01;
+float Ki = 0;
 float Kd = 0;
 float prev_error = 0;
 int prev_time = 0;
@@ -235,7 +235,7 @@ void loop()
     if ( armed ) {
       throttle(remote_values.throttle);
       Kp = (float)remote_values.pot1 / 100.0;
-      Kd = 5 + (float)remote_values.pot2 / 100.0;
+      Kd = (float)remote_values.pot2 / 100.0;
       Serial.print(Kp);
       Serial.print(" ");
       Serial.println(Kd);
