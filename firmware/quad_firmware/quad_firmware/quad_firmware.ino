@@ -43,11 +43,13 @@ bool armable = false;
 bool armed = false;
 
 //PID VALS
-const float Kp = .8;
-const float Ki = 0;
-const float Kd = 1.5;
+float Kp = 0;
+float Ki = 0.01;
+float Kd = 0;
 float prev_error = 0;
+int prev_time = 0;
 float cur_error = 0;
+int cur_time = 0;
 //float errors[3][3];
 float IMUvals[3];
 int p_adj = 0;
@@ -55,8 +57,8 @@ int p_adj = 0;
 void throttle(int speed) {
   int fr = speed + p_adj;
   int fl = speed + p_adj;
-  int br = speed - p_adj + 2;
-  int bl = speed - p_adj - 5;
+  int br = speed - p_adj;
+  int bl = speed - p_adj;
 
   if ( fr < 0 ) fr = 0;
   if ( fl < 0 ) fl = 0;
@@ -129,30 +131,31 @@ void readIMU() {
 
 float decaying_error = 0;
 
+
 void PID(struct signals* rvals) {
-  float time_ms = 10.0;
-  
   prev_error = cur_error;
+  prev_time = cur_time;
+  cur_time = millis();
   cur_error = rvals->pitch - IMUvals[PITCH];
   decaying_error /= 2;
   decaying_error += cur_error;
   
   float P = cur_error;
   float I = decaying_error;
-  float D = (cur_error - prev_error);
+  float D = (cur_error - prev_error) / (cur_time - prev_time);
 
   
   
   p_adj = Kp*P + Ki*I + Kd*D;
 
-  Serial.print(p_adj);
-  Serial.print(" ");
-  Serial.print(Kp*P);
-  Serial.print(" ");
-  Serial.print(Ki*I);
-  Serial.print(" ");
-  Serial.print(Kd*D);
-  Serial.println(" ");
+  //Serial.print(p_adj);
+  //Serial.print(" ");
+  //Serial.print(Kp*P);
+  //Serial.print(" ");
+  //Serial.print(Ki*I);
+  //Serial.print(" ");
+  //Serial.print(Kd*D);
+  //Serial.println(" ");
 }
  
 void setup()
@@ -231,6 +234,11 @@ void loop()
     
     if ( armed ) {
       throttle(remote_values.throttle);
+      Kp = (float)remote_values.pot1 / 100.0;
+      Kd = 5 + (float)remote_values.pot2 / 100.0;
+      Serial.print(Kp);
+      Serial.print(" ");
+      Serial.println(Kd);
     }
   }
 
