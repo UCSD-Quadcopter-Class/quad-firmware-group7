@@ -43,11 +43,17 @@ bool armable = false;
 bool armed = false;
 
 //PID VALS
-const float Kp = .8;
-const float Ki = 0;
-const float Kd = 1.5;
+//.2, .15, .36
+const float Kp = .3;
+const float Ki = 0.00;
+const float Kd = 0.95;
+
+float super_prev_error = 0;
+int super_prev_time = 0;
 float prev_error = 0;
+int prev_time = 0;
 float cur_error = 0;
+int cur_time = 0;
 //float errors[3][3];
 float IMUvals[3];
 int p_adj = 0;
@@ -56,7 +62,7 @@ void throttle(int speed) {
   int fr = speed + p_adj;
   int fl = speed + p_adj;
   int br = speed - p_adj + 2;
-  int bl = speed - p_adj - 5;
+  int bl = speed - p_adj - 10;
 
   if ( fr < 0 ) fr = 0;
   if ( fl < 0 ) fl = 0;
@@ -67,6 +73,11 @@ void throttle(int speed) {
   if ( fl > 255 ) fl = 255;
   if ( br > 255 ) br = 255;
   if ( bl > 255 ) bl = 255;
+
+//  Serial.print(fl);
+//  Serial.print(" ");
+//  Serial.print(bl);
+//  Serial.println(" ");
   
   analogWrite(FR_PIN, fr);
   analogWrite(FL_PIN, fl);
@@ -103,6 +114,13 @@ void setupSensor()
 }
 
 void readIMU() {
+
+  if (count == 10) {
+    count = 0;
+  } else {
+    return;
+  }
+
   sensors_vec_t   orientation;
 
   if (ahrs.getQuad(&orientation))
@@ -125,34 +143,33 @@ void readIMU() {
 
 }
 
-
-
 float decaying_error = 0;
 
 void PID(struct signals* rvals) {
-  float time_ms = 10.0;
-  
+ 
+  super_prev_error = prev_error;
+  super_prev_time = prev_time;
   prev_error = cur_error;
+  prev_time = cur_time;
   cur_error = rvals->pitch - IMUvals[PITCH];
+  cur_time = millis();
   decaying_error /= 2;
   decaying_error += cur_error;
   
   float P = cur_error;
   float I = decaying_error;
-  float D = (cur_error - prev_error);
-
-  
+  float D = (cur_error - prev_error)*1000 / (cur_time - prev_time);
   
   p_adj = Kp*P + Ki*I + Kd*D;
 
-  Serial.print(p_adj);
-  Serial.print(" ");
-  Serial.print(Kp*P);
-  Serial.print(" ");
-  Serial.print(Ki*I);
-  Serial.print(" ");
-  Serial.print(Kd*D);
-  Serial.println(" ");
+//  Serial.print(p_adj);
+//  Serial.print(" ");
+//  Serial.print(Kp*P);
+//  Serial.print(" ");
+//  Serial.print(Ki*I);
+//  Serial.print(" ");
+//  Serial.print(Kd*D);
+//  Serial.println(" ");
 }
  
 void setup()
@@ -169,14 +186,15 @@ void setup()
   // Try to initialise and warn if we couldn't detect the chip
   if (!lsm.begin())
   {
-    Serial.println("Oops ... unable to initialize the LSM9DS1. Check your wiring!");
+    //Serial.println("Oops ... unable to initialize the LSM9DS1. Check your wiring!");
     while (1);
   }
-  Serial.println("Found LSM9DS1 9DOF");
+  //Serial.println("Found LSM9DS1 9DOF");
 
   setupSensor();
     
-  Serial.println("Initiliazed");
+  //Serial.println("Initiliazed");
+  delay(1000);
 }
 
 void calibrate_values() {
@@ -213,10 +231,7 @@ void calibrate_values() {
   }
 }
 
-void loop()
-{
-  calibrate_values();
-  readIMU();
+void radio() {
   if ( rfAvailable() ) {
     struct signals remote_values;
     rfRead( (uint8_t*) (&remote_values), sizeof(struct signals));
@@ -233,6 +248,16 @@ void loop()
       throttle(remote_values.throttle);
     }
   }
+}
 
+void loop()
+{
+  calibrate_values();
+  
+  readIMU();
+  radio();
+  
+  count++;
+  delay(1);
 }
 
