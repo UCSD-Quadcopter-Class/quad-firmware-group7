@@ -50,6 +50,7 @@ const float Kd = 0.95;
 
 float super_prev_error = 0;
 int super_prev_time = 0;
+
 float prev_error = 0;
 int prev_time = 0;
 float cur_error = 0;
@@ -61,8 +62,9 @@ int p_adj = 0;
 void throttle(int speed) {
   int fr = speed + p_adj;
   int fl = speed + p_adj;
-  int br = speed - p_adj + 2;
-  int bl = speed - p_adj - 10;
+
+  int br = speed - p_adj;
+  int bl = speed - p_adj;
 
   if ( fr < 0 ) fr = 0;
   if ( fl < 0 ) fl = 0;
@@ -145,12 +147,13 @@ void readIMU() {
 
 float decaying_error = 0;
 
-void PID(struct signals* rvals) {
- 
+
+void PID(struct signals* rvals) { 
   super_prev_error = prev_error;
   super_prev_time = prev_time;
   prev_error = cur_error;
   prev_time = cur_time;
+
   cur_error = rvals->pitch - IMUvals[PITCH];
   cur_time = millis();
   decaying_error /= 2;
@@ -170,6 +173,7 @@ void PID(struct signals* rvals) {
 //  Serial.print(" ");
 //  Serial.print(Kd*D);
 //  Serial.println(" ");
+
 }
  
 void setup()
@@ -246,6 +250,11 @@ void radio() {
     
     if ( armed ) {
       throttle(remote_values.throttle);
+      Kp = (float)remote_values.pot1 / 100.0;
+      Kd = (float)remote_values.pot2 / 100.0;
+      Serial.print(Kp);
+      Serial.print(" ");
+      Serial.println(Kd);
     }
   }
 }
