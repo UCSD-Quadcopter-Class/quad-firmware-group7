@@ -7,8 +7,6 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_Simple_AHRS.h>
 
-const float COMPLIMENTARY_CONST = .65;
-
 // i2c
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 
@@ -41,29 +39,31 @@ int value_to_read = -1;
 int values[4] = {0, 0, 0, 0};
 bool armable = false;
 bool armed = false;
+struct signals remote_values;
 
 //PID VALS
-//.2, .15, .36
-const float Kp = .3;
-const float Ki = 0.00;
-const float Kd = 0.95;
+//P: .89, d: .48
+//1.6, .65
+ const float Kp = 1.6;
+ float Ki = 0.00;
+ float Kd = 0.00;
 
-float super_prev_error = 0;
-int super_prev_time = 0;
+float COMP_CONST = .40;
 
 float prev_error = 0;
-int prev_time = 0;
+float prev_time = 0;
 float cur_error = 0;
-int cur_time = 0;
-//float errors[3][3];
+float cur_time = 0;
+float dt = 0;
+
 float IMUvals[3];
 int p_adj = 0;
 
 void throttle(int speed) {
-  int fr = speed + p_adj;
-  int fl = speed + p_adj;
+  int fr = speed + p_adj;// - 10;
+  int fl = speed + p_adj;// - 10;
 
-  int br = speed - p_adj;
+  int br = (speed - p_adj);
   int bl = speed - p_adj;
 
   if ( fr < 0 ) fr = 0;
@@ -76,10 +76,10 @@ void throttle(int speed) {
   if ( br > 255 ) br = 255;
   if ( bl > 255 ) bl = 255;
 
-//  Serial.print(fl);
-//  Serial.print(" ");
-//  Serial.print(bl);
-//  Serial.println(" ");
+  Serial.print(fl);
+  Serial.print(" ");
+  Serial.print(bl);
+  Serial.print(" ");
   
   analogWrite(FR_PIN, fr);
   analogWrite(FL_PIN, fl);
@@ -103,25 +103,17 @@ void adjust_imu(sensors_vec_t * vals) {
 
 void setupSensor()
 {
-  // 1.) Set the accelerometer range
   lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_2G);
-  //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_4G);
-  //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_8G);
-  //lsm.setupAccel(lsm.LSM9DS1_ACCELRANGE_16G);
-
-  // 3.) Setup the gyroscope
   lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_245DPS);
-  //lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_500DPS);
-  //lsm.setupGyro(lsm.LSM9DS1_GYROSCALE_2000DPS);
 }
 
 void readIMU() {
 
-  if (count == 10) {
-    count = 0;
-  } else {
-    return;
-  }
+//  if (count == 10) {
+//    count = 0;
+//  } else {
+//    return;
+//  }
 
   sensors_vec_t   orientation;
 
@@ -134,14 +126,18 @@ void readIMU() {
     IMUvals[PITCH_GYRO] = orientation.gyro_y;
   }
 
-  //float new_angle = (1-COMPLIMENTARY_CONST) * (IMUvals[PITCH_GYRO]) + (COMPLIMENTARY_CONST)*IMUvals[PITCH];
-  //Serial.print(new_angle);
-  //Serial.print(" ");
-  //Serial.print(IMUvals[PITCH]);
-  //Serial.print(" ");
-  //Serial.print(IMUvals[PITCH_GYRO]);
-  //Serial.println(" ");
-  
+  prev_time = cur_time;
+  cur_time = millis();
+  dt = cur_time - prev_time;
+
+  IMUvals[PITCH] = ((1.0-COMP_CONST) * IMUvals[PITCH_GYRO] * dt/1000.0) + (COMP_CONST * IMUvals[PITCH]);
+
+//  Serial.print(IMUvals[PITCH]);
+//  Serial.print(" ");
+//  Serial.print(IMUvals[PITCH_GYRO] * dt/1000.0);
+//  Serial.print(" ");
+//  Serial.print(new_angle);
+//  Serial.println(" ");
 
 }
 
@@ -149,21 +145,17 @@ float decaying_error = 0;
 
 
 void PID(struct signals* rvals) { 
-  super_prev_error = prev_error;
-  super_prev_time = prev_time;
-  prev_error = cur_error;
-  prev_time = cur_time;
 
+  prev_error = cur_error;
   cur_error = rvals->pitch - IMUvals[PITCH];
-  cur_time = millis();
   decaying_error /= 2;
   decaying_error += cur_error;
   
-  float P = cur_error;
-  float I = decaying_error;
-  float D = (cur_error - prev_error)*1000 / (cur_time - prev_time);
+//  float P = cur_error;
+//  float I = decaying_error;
+  float D = (cur_error - prev_error)/ dt * 1000.0;
   
-  p_adj = Kp*P + Ki*I + Kd*D;
+  p_adj = Kp*cur_error + Ki*decaying_error + Kd*D;
 
 //  Serial.print(p_adj);
 //  Serial.print(" ");
@@ -171,7 +163,8 @@ void PID(struct signals* rvals) {
 //  Serial.print(" ");
 //  Serial.print(Ki*I);
 //  Serial.print(" ");
-//  Serial.print(Kd*D);
+//   Serial.print(Kd*D);
+//   Serial.print(" ");
 //  Serial.println(" ");
 
 }
@@ -199,6 +192,8 @@ void setup()
     
   //Serial.println("Initiliazed");
   delay(1000);
+  calibrate_values();
+  cur_time = millis();
 }
 
 void calibrate_values() {
@@ -237,36 +232,36 @@ void calibrate_values() {
 
 void radio() {
   if ( rfAvailable() ) {
-    struct signals remote_values;
     rfRead( (uint8_t*) (&remote_values), sizeof(struct signals));
-    PID(&remote_values);
     if ( remote_values.magic != MAGIC_NUMBER ) {
       return;
     }
-
     if ( remote_values.button_flags & BUTTON1_MASK > 0 && armable) {
       armed = true;
     }
     
     if ( armed ) {
-      throttle(remote_values.throttle);
-      Kp = (float)remote_values.pot1 / 100.0;
+//      COMP_CONST = (float)remote_values.pot1 / 100.0;
+//      Serial.print(COMP_CONST);
+//      Serial.println(" ");
+      Ki = (float)remote_values.pot1 / 100.0;
       Kd = (float)remote_values.pot2 / 100.0;
-      Serial.print(Kp);
-      Serial.print(" ");
-      Serial.println(Kd);
     }
   }
 }
 
 void loop()
-{
-  calibrate_values();
-  
+{  
   readIMU();
   radio();
-  
-  count++;
-  delay(1);
+  PID(&remote_values);
+  throttle(remote_values.throttle);
+  Serial.print(Ki);
+  Serial.print(" ");
+  Serial.print(Kd);
+  Serial.print(" ");
+  Serial.print(dt);
+  Serial.println(" ");
+//  count++;
 }
 
