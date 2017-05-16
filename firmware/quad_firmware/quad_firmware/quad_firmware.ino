@@ -42,14 +42,16 @@ bool armed = false;
 struct signals remote_values;
 
 //PID VALS
-//P: .89, d: .48
-//1.6, .65
- const float Kp = 1.6;
- float Ki = 0.00;
- float Kd = 0.00;
+//  P      D       I
+// .38   .06-.08?  1.00 (not dividing by 100)
+float Kp = 0.38;
+float Ki = 0.00;
+float Kd = 0.00;
 
-float COMP_CONST = .40;
+//float COMP_CONST = .40;
+float COMP_CONST = .02;
 
+float prev_pitch = 0.0;
 float prev_error = 0;
 float prev_time = 0;
 float cur_error = 0;
@@ -63,7 +65,7 @@ void throttle(int speed) {
   int fr = speed + p_adj;// - 10;
   int fl = speed + p_adj;// - 10;
 
-  int br = (speed - p_adj);
+  int br = (speed - p_adj) + 5;
   int bl = speed - p_adj;
 
   if ( fr < 0 ) fr = 0;
@@ -76,10 +78,10 @@ void throttle(int speed) {
   if ( br > 255 ) br = 255;
   if ( bl > 255 ) bl = 255;
 
-  Serial.print(fl);
-  Serial.print(" ");
-  Serial.print(bl);
-  Serial.print(" ");
+//  Serial.print(fl);
+//  Serial.print(" ");
+//  Serial.print(bl);
+//  Serial.print(" ");
   
   analogWrite(FR_PIN, fr);
   analogWrite(FL_PIN, fl);
@@ -130,11 +132,14 @@ void readIMU() {
   cur_time = millis();
   dt = cur_time - prev_time;
 
-  IMUvals[PITCH] = ((1.0-COMP_CONST) * IMUvals[PITCH_GYRO] * dt/1000.0) + (COMP_CONST * IMUvals[PITCH]);
+  // add in previous value to first term 
+  float new_angle = ((1.0-COMP_CONST) * (IMUvals[PITCH_GYRO] * dt/1000.0 + prev_pitch)) + (COMP_CONST * IMUvals[PITCH]);
+  prev_pitch = IMUvals[PITCH];
+  IMUvals[PITCH] = new_angle;
 
 //  Serial.print(IMUvals[PITCH]);
 //  Serial.print(" ");
-//  Serial.print(IMUvals[PITCH_GYRO] * dt/1000.0);
+//  Serial.print(IMUvals[PITCH_GYRO] * dt/1000.0 + prev_pitch);
 //  Serial.print(" ");
 //  Serial.print(new_angle);
 //  Serial.println(" ");
@@ -152,17 +157,22 @@ void PID(struct signals* rvals) {
   decaying_error += cur_error;
   
 //  float P = cur_error;
-//  float I = decaying_error;
   float D = (cur_error - prev_error)/ dt * 1000.0;
-  
-  p_adj = Kp*cur_error + Ki*decaying_error + Kd*D;
+
+  // cap from -100 - 100 after multiplying in dt
+  float I = Ki * decaying_error * dt / 1000.0;
+
+  if(I > 100.0) I = 100.0;
+  if(I < -100.0) I = -100.0;
+
+  p_adj = Kp*cur_error + I + Kd*D;
 
 //  Serial.print(p_adj);
 //  Serial.print(" ");
 //  Serial.print(Kp*P);
 //  Serial.print(" ");
-//  Serial.print(Ki*I);
-//  Serial.print(" ");
+  Serial.print(I);
+  Serial.print(" ");
 //   Serial.print(Kd*D);
 //   Serial.print(" ");
 //  Serial.println(" ");
@@ -172,9 +182,9 @@ void PID(struct signals* rvals) {
 void setup()
 {
 //  Serial.begin(9600);  // Start up serial
-  Serial.begin(115200);
+  Serial.begin(9600);
 //  Serial1.begin(115200);
-  rfBegin(19);  // Initialize ATmega128RFA1 radio on channel 11 (can be 11-26)
+  rfBegin(18);  // Initialize ATmega128RFA1 radio on channel 11 (can be 11-26)
 
   while (!Serial) {
     delay(1); // will pause Zero, Leonardo, etc until serial console opens
@@ -243,8 +253,8 @@ void radio() {
     if ( armed ) {
 //      COMP_CONST = (float)remote_values.pot1 / 100.0;
 //      Serial.print(COMP_CONST);
-//      Serial.println(" ");
-      Ki = (float)remote_values.pot1 / 100.0;
+////      Serial.println(" ");
+      Ki = (float)remote_values.pot1;
       Kd = (float)remote_values.pot2 / 100.0;
     }
   }
@@ -259,9 +269,9 @@ void loop()
   Serial.print(Ki);
   Serial.print(" ");
   Serial.print(Kd);
-  Serial.print(" ");
-  Serial.print(dt);
   Serial.println(" ");
+//  Serial.print(dt);
+//  Serial.println(" ");
 //  count++;
 }
 

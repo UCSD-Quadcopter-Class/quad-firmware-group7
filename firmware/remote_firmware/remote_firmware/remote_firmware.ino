@@ -79,7 +79,7 @@ void setup() {
 
   //lcd.print("Hello, World!");
  
-  const int RADIO_CHANNEL = 19;        // Channel for radio communications (can be 11-26)
+  const int RADIO_CHANNEL = 18;        // Channel for radio communications (can be 11-26)
   const int SERIAL_BAUD = 9600;        // Baud rate for serial port 
   const int SERIAL1_BAUD = 9600;     // Baud rate for serial1 port
 
@@ -140,8 +140,14 @@ void loop() {
   numsScaled[1] = map(numbers[1], 151, 820, 0, 255);
   numsScaled[2] = adjust_number(numbers[2], 110, 467, 820, -45, 0, 45);
   numsScaled[3] = adjust_number(numbers[3], 110, 479, 820, -45, 0, 45);
-  numsScaled[4] = map(numbers[4], 110, 820, 0, 255);
-  numsScaled[5] = map(numbers[5], 110, 820, 0, 255);
+  numsScaled[4] = map(numbers[4], 105, 820, 0, 255);
+  numsScaled[5] = map(numbers[5], 105, 820, 0, 255);
+
+  for(int i=0; i < 6; i++) {
+    Serial.print(numbers[i]);
+    Serial.print(" ");
+  }
+  Serial.println("");
 
   int button1Value = digitalRead(PIN_BTN1); 
   int button2Value = digitalRead(PIN_BTN2); 
@@ -176,7 +182,7 @@ void loop() {
   if ( numsScaled[7] > 0 ) {
     remote_values.button_flags |= BUTTON2_MASK;
   }
-  Serial.println(remote_values.pot2);
+//  Serial.println(remote_values.pot2);
   rfWrite((uint8_t*) (&remote_values), sizeof(struct signals));
   delay(200);
 
