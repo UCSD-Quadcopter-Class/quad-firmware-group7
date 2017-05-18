@@ -44,12 +44,13 @@ struct signals remote_values;
 //PID VALS
 //  P      D       I
 // .38   .06-.08?  1.00 (not dividing by 100)
-float Kp = 0.38;
+// .19   3.00     68.00
+float Kp = 0.27;
 float Ki = 0.00;
 float Kd = 0.00;
 
 //float COMP_CONST = .40;
-float COMP_CONST = .02;
+float COMP_CONST = .1;
 
 float prev_pitch = 0.0;
 float prev_error = 0;
@@ -125,7 +126,7 @@ void readIMU() {
     
     IMUvals[PITCH] = orientation.pitch;
     IMUvals[ROLL] = orientation.roll;
-    IMUvals[PITCH_GYRO] = orientation.gyro_y;
+    IMUvals[PITCH_GYRO] = -orientation.gyro_y;
   }
 
   prev_time = cur_time;
@@ -157,7 +158,7 @@ void PID(struct signals* rvals) {
   decaying_error += cur_error;
   
 //  float P = cur_error;
-  float D = (cur_error - prev_error)/ dt * 1000.0;
+  float D = (cur_error - prev_error)/ dt;
 
   // cap from -100 - 100 after multiplying in dt
   float I = Ki * decaying_error * dt / 1000.0;
@@ -166,16 +167,15 @@ void PID(struct signals* rvals) {
   if(I < -100.0) I = -100.0;
 
   p_adj = Kp*cur_error + I + Kd*D;
-
-//  Serial.print(p_adj);
-//  Serial.print(" ");
-//  Serial.print(Kp*P);
-//  Serial.print(" ");
+  Serial.print(" p_adj :");
+  Serial.print(p_adj);
+  Serial.print(" P: ");
+  Serial.print(Kp*cur_error);
+  Serial.print(" I: ");
   Serial.print(I);
+  Serial.print(" D: ");
+  Serial.print(Kd*D);
   Serial.print(" ");
-//   Serial.print(Kd*D);
-//   Serial.print(" ");
-//  Serial.println(" ");
 
 }
  
@@ -254,8 +254,8 @@ void radio() {
 //      COMP_CONST = (float)remote_values.pot1 / 100.0;
 //      Serial.print(COMP_CONST);
 ////      Serial.println(" ");
-      Ki = (float)remote_values.pot1;
-      Kd = (float)remote_values.pot2 / 100.0;
+      Ki = ((float)remote_values.pot1 - 1.0)/10.0;
+      Kd = (float)remote_values.pot2;
     }
   }
 }
