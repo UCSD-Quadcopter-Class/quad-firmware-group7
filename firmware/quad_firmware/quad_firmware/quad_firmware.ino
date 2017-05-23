@@ -21,8 +21,8 @@ byte data[32];
 int idx = -1;
 
 const int FR_PIN = 5;
-const int FL_PIN = 3;
-const int BR_PIN = 4;
+const int BR_PIN = 3;
+const int FL_PIN = 4;
 const int BL_PIN = 8;
 
 const int PITCH = 0;
@@ -43,14 +43,15 @@ struct signals remote_values;
 
 //PID VALS
 //  P      D       I
-// .38   .06-.08?  1.00 (not dividing by 100)
-// .19   3.00     68.00
-float Kp = 0.27;
-float Ki = 0.00;
-float Kd = 0.00;
+//  .19   .02     .01
+//  .21   .13     .007
+// .19    .07
+float Kp = 0.19;
+float Ki = 0.007;
+float Kd = 0.085;
 
 //float COMP_CONST = .40;
-float COMP_CONST = .1;
+float COMP_CONST = .05;
 
 float prev_pitch = 0.0;
 float prev_error = 0;
@@ -63,11 +64,11 @@ float IMUvals[3];
 int p_adj = 0;
 
 void throttle(int speed) {
-  int fr = speed + p_adj;// - 10;
-  int fl = speed + p_adj;// - 10;
+  int fr = speed + p_adj - 2;
+  int fl = speed + p_adj - 2;
 
-  int br = (speed - p_adj) + 5;
-  int bl = speed - p_adj;
+  int br = speed - p_adj + 3;
+  int bl = speed - p_adj + 2;
 
   if ( fr < 0 ) fr = 0;
   if ( fl < 0 ) fl = 0;
@@ -154,17 +155,19 @@ void PID(struct signals* rvals) {
 
   prev_error = cur_error;
   cur_error = rvals->pitch - IMUvals[PITCH];
-  decaying_error /= 2;
-  decaying_error += cur_error;
+//  decaying_error /= 2.0;
+  decaying_error += cur_error * 16.0;
+
+   if(decaying_error > 100.0) decaying_error = 100.0;
+   if(decaying_error < -100.0) decaying_error = -100.0;
   
 //  float P = cur_error;
-  float D = (cur_error - prev_error)/ dt;
+  float D = (cur_error - prev_error)/ dt * 1000.0;
 
   // cap from -100 - 100 after multiplying in dt
   float I = Ki * decaying_error * dt / 1000.0;
 
-  if(I > 100.0) I = 100.0;
-  if(I < -100.0) I = -100.0;
+ 
 
   p_adj = Kp*cur_error + I + Kd*D;
   Serial.print(" p_adj :");
@@ -175,7 +178,7 @@ void PID(struct signals* rvals) {
   Serial.print(I);
   Serial.print(" D: ");
   Serial.print(Kd*D);
-  Serial.print(" ");
+  Serial.println(" ");
 
 }
  
@@ -222,7 +225,7 @@ void calibrate_values() {
         {
           pitches[i] = orientation.pitch;
           rolls[i] = orientation.roll;
-          gyros[i] = orientation.gyro_y;
+          gyros[i] = -orientation.gyro_y;
         }
       }
 
@@ -254,8 +257,8 @@ void radio() {
 //      COMP_CONST = (float)remote_values.pot1 / 100.0;
 //      Serial.print(COMP_CONST);
 ////      Serial.println(" ");
-      Ki = ((float)remote_values.pot1 - 1.0)/10.0;
-      Kd = (float)remote_values.pot2;
+//      Kp = ((float)remote_values.pot1 - 1.0)/100.0;
+//      Kd = ((float)remote_values.pot2 - 2.0)/100.0;
     }
   }
 }
@@ -266,12 +269,11 @@ void loop()
   radio();
   PID(&remote_values);
   throttle(remote_values.throttle);
-  Serial.print(Ki);
-  Serial.print(" ");
-  Serial.print(Kd);
-  Serial.println(" ");
-//  Serial.print(dt);
+//  Serial.print(Kp);
+//  Serial.print(" ");
+//  Serial.print(Kd);
 //  Serial.println(" ");
+
 //  count++;
 }
 
