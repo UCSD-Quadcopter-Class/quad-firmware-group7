@@ -21,8 +21,8 @@ byte data[32];
 int idx = -1;
 
 const int FR_PIN = 5;
-const int BR_PIN = 3;
-const int FL_PIN = 4;
+const int BR_PIN = 4;
+const int FL_PIN = 3;
 const int BL_PIN = 8;
 
 const int PITCH = 0;
@@ -46,9 +46,10 @@ struct signals remote_values;
 //  .19   .02     .01
 //  .21   .13     .007
 // .19    .07
+//  .19   .085     .1
 float Kp = 0.19;
-float Ki = 0.007;
-float Kd = 0.085;
+float Ki = 0.00;
+float Kd = 0.00;
 
 //float COMP_CONST = .40;
 float COMP_CONST = .05;
@@ -64,11 +65,11 @@ float IMUvals[3];
 int p_adj = 0;
 
 void throttle(int speed) {
-  int fr = speed + p_adj - 2;
-  int fl = speed + p_adj - 2;
+  int fr = speed + p_adj - 8;
+  int fl = speed + p_adj - 8;
 
-  int br = speed - p_adj + 3;
-  int bl = speed - p_adj + 2;
+  int br = speed - p_adj + 8;
+  int bl = speed - p_adj + 8;
 
   if ( fr < 0 ) fr = 0;
   if ( fl < 0 ) fl = 0;
@@ -154,9 +155,9 @@ float decaying_error = 0;
 void PID(struct signals* rvals) { 
 
   prev_error = cur_error;
-  cur_error = rvals->pitch - IMUvals[PITCH];
-//  decaying_error /= 2.0;
-  decaying_error += cur_error * 16.0;
+  cur_error = 0.0 - IMUvals[PITCH];
+  decaying_error /= 2.0;
+  decaying_error += cur_error / 8.0;
 
    if(decaying_error > 100.0) decaying_error = 100.0;
    if(decaying_error < -100.0) decaying_error = -100.0;
@@ -170,7 +171,7 @@ void PID(struct signals* rvals) {
  
 
   p_adj = Kp*cur_error + I + Kd*D;
-  Serial.print(" p_adj :");
+  Serial.print(" p_adjr :");
   Serial.print(p_adj);
   Serial.print(" P: ");
   Serial.print(Kp*cur_error);
@@ -257,8 +258,8 @@ void radio() {
 //      COMP_CONST = (float)remote_values.pot1 / 100.0;
 //      Serial.print(COMP_CONST);
 ////      Serial.println(" ");
-//      Kp = ((float)remote_values.pot1 - 1.0)/100.0;
-//      Kd = ((float)remote_values.pot2 - 2.0)/100.0;
+      Ki = ((float)remote_values.pot1 - 1.0)/10.0;
+      Kd = ((float)remote_values.pot2 - 2.0)/100.0;
     }
   }
 }
@@ -269,7 +270,7 @@ void loop()
   radio();
   PID(&remote_values);
   throttle(remote_values.throttle);
-//  Serial.print(Kp);
+//  Serial.print(Ki);
 //  Serial.print(" ");
 //  Serial.print(Kd);
 //  Serial.println(" ");

@@ -135,12 +135,11 @@ bool Adafruit_LSM9DS1::begin()
 
   // Enable the accelerometer continous
   write8(XGTYPE, LSM9DS1_REGISTER_CTRL_REG5_XL, 0x38); // enable X Y and Z axis
-  write8(XGTYPE, LSM9DS1_REGISTER_CTRL_REG6_XL, 0x80/*0xC0*/); // 1 KHz out data rate, BW set by ODR, 408Hz anti-aliasing
-  write8(XGTYPE, LSM9DS1_REGISTER_CTRL_REG7_XL, 0x90); // low pass?
+  write8(XGTYPE, LSM9DS1_REGISTER_CTRL_REG6_XL, 0x40/*0xC0*/); // 1 KHz out data rate, BW set by ODR, 408Hz anti-aliasing
+  write8(XGTYPE, LSM9DS1_REGISTER_CTRL_REG7_XL, 0x80); // low pass?
 
 
-// 0xA0 / 0xA0 -> pretty good at quarter power
-// 0x80 / 0xE0 -> better
+// 0x8, 0x9 was what i was using before
 
 
   // enable mag continuous
