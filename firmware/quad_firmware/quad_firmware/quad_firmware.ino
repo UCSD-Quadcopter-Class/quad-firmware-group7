@@ -13,32 +13,33 @@ Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 // Create simple AHRS algorithm using the LSM9DS0 instance's accelerometer and magnetometer.
 Adafruit_Simple_AHRS ahrs(&lsm.getAccel(), &lsm.getMag(), &lsm.getGyro() );
 
-int count = 0;
-bool done = false;
-bool first = true;
-unsigned long start;
-byte data[32];
-int idx = -1;
+const int TWEAK_COMP_CONST = 1;
+const int TWEAK_KP = 2;
+const int TWEAK_KD = 3;
+const int TWEAK_KI = 4;
 
+bool tweak = true;
+
+int tweak_pot1 = TWEAK_KD;
+int tweak_pot2 = TWEAK_KI;
+
+float pot1_factor = 1000.0;
+float pot2_factor = 10.0;
+
+// MOTOR PIN CONSTANTS
 const int FR_PIN = 5;
 const int BR_PIN = 4;
 const int FL_PIN = 3;
 const int BL_PIN = 8;
 
+// VALUES
 const int PITCH = 0;
 const int PITCH_GYRO = 1;
 const int ROLL = 2;
 const int YAW = 3;
 
-const int FL = 0;
-const int FR = 1;
-const int BL = 2;
-const int BR = 3;
-
 int value_to_read = -1;
 int values[4] = {0, 0, 0, 0};
-bool armable = false;
-bool armed = false;
 struct signals remote_values;
 
 //PID VALS
@@ -47,12 +48,12 @@ struct signals remote_values;
 //  .21   .13     .007
 // .19    .07
 //  .19   .085     .1
-float Kp = 0.19;
-float Ki = 0.00;
-float Kd = 0.00;
+float Kp = 0.23;
+float Kd = 0.09;
+float Ki = 0.70;
 
 //float COMP_CONST = .40;
-float COMP_CONST = .05;
+float COMP_CONST = .2;
 
 float prev_pitch = 0.0;
 float prev_error = 0;
@@ -64,7 +65,8 @@ float dt = 0;
 float IMUvals[3];
 int p_adj = 0;
 
-void throttle(int speed) {
+void throttle() {
+  int speed = remote_values.throttle;
   int fr = speed + p_adj - 8;
   int fl = speed + p_adj - 8;
 
@@ -80,11 +82,6 @@ void throttle(int speed) {
   if ( fl > 255 ) fl = 255;
   if ( br > 255 ) br = 255;
   if ( bl > 255 ) bl = 255;
-
-//  Serial.print(fl);
-//  Serial.print(" ");
-//  Serial.print(bl);
-//  Serial.print(" ");
   
   analogWrite(FR_PIN, fr);
   analogWrite(FL_PIN, fl);
@@ -113,13 +110,6 @@ void setupSensor()
 }
 
 void readIMU() {
-
-//  if (count == 10) {
-//    count = 0;
-//  } else {
-//    return;
-//  }
-
   sensors_vec_t   orientation;
 
   if (ahrs.getQuad(&orientation))
@@ -135,34 +125,26 @@ void readIMU() {
   cur_time = millis();
   dt = cur_time - prev_time;
 
-  // add in previous value to first term 
+  // complemetary filter
+  // add in previous value to first term
   float new_angle = ((1.0-COMP_CONST) * (IMUvals[PITCH_GYRO] * dt/1000.0 + prev_pitch)) + (COMP_CONST * IMUvals[PITCH]);
   prev_pitch = IMUvals[PITCH];
   IMUvals[PITCH] = new_angle;
-
-//  Serial.print(IMUvals[PITCH]);
-//  Serial.print(" ");
-//  Serial.print(IMUvals[PITCH_GYRO] * dt/1000.0 + prev_pitch);
-//  Serial.print(" ");
-//  Serial.print(new_angle);
-//  Serial.println(" ");
-
 }
 
 float decaying_error = 0;
 
-
-void PID(struct signals* rvals) { 
+void PID() { 
 
   prev_error = cur_error;
   cur_error = 0.0 - IMUvals[PITCH];
-  decaying_error /= 2.0;
-  decaying_error += cur_error / 8.0;
-
-   if(decaying_error > 100.0) decaying_error = 100.0;
-   if(decaying_error < -100.0) decaying_error = -100.0;
+  decaying_error += cur_error/16.0;
   
-//  float P = cur_error;
+  // Caps decaying error
+  if(decaying_error > 100.0) decaying_error = 100.0;
+  if(decaying_error < -100.0) decaying_error = -100.0;
+  
+  float P = cur_error;
   float D = (cur_error - prev_error)/ dt * 1000.0;
 
   // cap from -100 - 100 after multiplying in dt
@@ -170,17 +152,19 @@ void PID(struct signals* rvals) {
 
  
 
-  p_adj = Kp*cur_error + I + Kd*D;
-  Serial.print(" p_adjr :");
-  Serial.print(p_adj);
-  Serial.print(" P: ");
-  Serial.print(Kp*cur_error);
-  Serial.print(" I: ");
+  p_adj = Kp*P + I + Kd*D;
+  Serial.print(Kp*P);
+  Serial.print(" ");
   Serial.print(I);
-  Serial.print(" D: ");
+  Serial.print(" ");
   Serial.print(Kd*D);
+  Serial.print(" ");
+  Serial.print(Kp);
+  Serial.print(" ");
+  Serial.print(Kd);
+  Serial.print(" ");
+  Serial.print(Ki);
   Serial.println(" ");
-
 }
  
 void setup()
@@ -200,7 +184,6 @@ void setup()
     //Serial.println("Oops ... unable to initialize the LSM9DS1. Check your wiring!");
     while (1);
   }
-  //Serial.println("Found LSM9DS1 9DOF");
 
   setupSensor();
     
@@ -212,36 +195,29 @@ void setup()
 
 void calibrate_values() {
   sensors_vec_t   orientation;
+  float pitches[10];
+  float rolls[10];
+  float gyros[10];
   
-  if ( armable ) {
-    // already zeroed
-    return;
-  } else {
-      float pitches[10];
-      float rolls[10];
-      float gyros[10];
-      for ( int i = 0; i < 10; i++ ) {
-        delay(100);
-        if (ahrs.getQuad(&orientation))
-        {
-          pitches[i] = orientation.pitch;
-          rolls[i] = orientation.roll;
-          gyros[i] = -orientation.gyro_y;
-        }
-      }
-
-      for ( int i = 0; i < 10; i++ ) {
-        calibrated.pitch += pitches[i];
-        calibrated.roll += rolls[i];
-        calibrated.gyro += gyros[i];
-      }
-      
-      calibrated.pitch /= 10;
-      calibrated.roll /= 10;
-      calibrated.gyro /= 10;
-
-      armable = true;
+  for ( int i = 0; i < 10; i++ ) {
+    delay(100);
+    if (ahrs.getQuad(&orientation))
+    {
+      pitches[i] = orientation.pitch;
+      rolls[i] = orientation.roll;
+      gyros[i] = -orientation.gyro_y;
+    }
   }
+
+  for ( int i = 0; i < 10; i++ ) {
+    calibrated.pitch += pitches[i];
+    calibrated.roll += rolls[i];
+    calibrated.gyro += gyros[i];
+  }
+  
+  calibrated.pitch /= 10;
+  calibrated.roll /= 10;
+  calibrated.gyro /= 10;
 }
 
 void radio() {
@@ -250,31 +226,54 @@ void radio() {
     if ( remote_values.magic != MAGIC_NUMBER ) {
       return;
     }
-    if ( remote_values.button_flags & BUTTON1_MASK > 0 && armable) {
-      armed = true;
-    }
     
-    if ( armed ) {
-//      COMP_CONST = (float)remote_values.pot1 / 100.0;
-//      Serial.print(COMP_CONST);
-////      Serial.println(" ");
-      Ki = ((float)remote_values.pot1 - 1.0)/10.0;
-      Kd = ((float)remote_values.pot2 - 2.0)/100.0;
-    }
+    tweak_values();
   }
+}
+
+// things to tweak:
+// 1. complimentary const
+// 2. Kp
+// 3. Kd
+// 4. Ki
+// other values:
+// pot1 reduction, pot2 reduction
+
+
+void tweak_values()
+{
+  if (!tweak) return;
+  if ( tweak_pot1 == TWEAK_COMP_CONST ) {
+    COMP_CONST = ((float)remote_values.pot1 / 100.0);
+  } else if ( tweak_pot1 == TWEAK_KP ) {
+    Kp = ((float)remote_values.pot1 - 1.0) / pot1_factor;
+  } else if ( tweak_pot1 == TWEAK_KD ) {
+    Kd = ((float)remote_values.pot1 - 1.0) / pot1_factor;
+  } else if ( tweak_pot1 == TWEAK_KI ) {
+    Ki = ((float)remote_values.pot1 - 1.0) / pot1_factor;
+  }
+
+  if ( tweak_pot2 == TWEAK_COMP_CONST ) {
+    COMP_CONST = ((float)remote_values.pot2 / 100.0);
+  } else if ( tweak_pot2 == TWEAK_KP ) {
+    Kp = ((float)remote_values.pot2 - 2.0) / pot2_factor;
+  } else if ( tweak_pot2 == TWEAK_KD ) {
+    Kd = ((float)remote_values.pot2 - 2.0) / pot2_factor;
+  } else if ( tweak_pot2 == TWEAK_KI ) {
+    Ki = ((float)remote_values.pot2 - 2.0) / pot2_factor;
+  }
+}
+
+void print_values()
+{
+
 }
 
 void loop()
 {  
   readIMU();
   radio();
-  PID(&remote_values);
-  throttle(remote_values.throttle);
-//  Serial.print(Ki);
-//  Serial.print(" ");
-//  Serial.print(Kd);
-//  Serial.println(" ");
-
-//  count++;
+  PID();
+  throttle();
 }
 
